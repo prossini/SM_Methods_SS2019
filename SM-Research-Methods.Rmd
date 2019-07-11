@@ -1,7 +1,7 @@
 ---
 title: "Social Media Research Methods: An introduction using R"
 author: "Patricia Rossini, University of Liverpool"
-date: "7/10/2019"
+date: "July 2019"
 output: html_document
 
 knit: (function(input_file, encoding) {

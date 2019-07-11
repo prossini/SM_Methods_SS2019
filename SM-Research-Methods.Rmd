@@ -41,8 +41,10 @@ This course is meant for any student with an interest in researching human behav
 - Learn techniques to clean, visualize and analyze social media data using R
 
 
+__Readings__
 
-__Readings [Dropbox](https://www.dropbox.com/sh/xjzua39yr6ttxgo/AACjRj8xlB4w8UMDYMj16FyKa?dl=0)__
+*(available on [Dropbox](https://www.dropbox.com/sh/xjzua39yr6ttxgo/AACjRj8xlB4w8UMDYMj16FyKa?dl=0)*
+
 
 - [AoIR's Ethical Decision-Making and Internet Research](https://aoir.org/reports/ethics2.pdf)
 - Batrinca, B., & Treleaven, P. C. (2015). Social media analytics: A survey of techniques, tools and platforms. AI & SOCIETY, 30(1), 89–116. https://doi.org/10.1007/s00146-014-0549-4

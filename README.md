@@ -24,7 +24,7 @@
 
 </div>
 
-<p>S<p><strong>Course Materials</strong></p>
+<p><strong>Course Materials</strong></p>
 <ul>
 <li>Day 1</li>
 <li>Day 2</li>

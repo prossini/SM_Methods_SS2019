@@ -1,0 +1,191 @@
+---
+title: "Collecting Twitter Data With R"
+author: "Patricia Rossini, University of Liverpool"
+date: "July 2019"
+output: html_document
+
+knit: (function(input_file, encoding) {
+   rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), 'day1.html'))})
+
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction 
+
+Welcome to day 1 of the Digital Society International Summer School 2019
+
+Before we can talk about using R to collect and analyze data, let's start with the basics. 
+First, why use R when there are so many other options out there -- including some that do not require any coding knowledge? A few reasons: 
+
+- R is open-source, and it is also widely supported by active data science and statistics communities. That means it is free :) and constantly updated with new packages, functions, and utilities 
+- R is also one of the most used languages in data science, along with Python. 
+- Because of its active community, it's fairly easy to find online resources and help to tackle any problems or challenges you may find
+- The use of a command line interface and scripts facilitate reproducibility: not only you can always go back to your script to understand exactly what you did in your analysis, but you can also share it so that others can reproduce it. 
+- Stats software can normally only do... statistics. R is a powerful tool that can be used for several different methods (e.g. machine learning, textual analysis, social network analysis, time series), as well as to scrape, clean,  analyze, and visualize data.
+
+
+
+### R Basics
+First things first: open RStudio and install all the packages we will need for this course running the following code (remove the # to run the code):
+
+```{r installing packages, message=FALSE, eval=FALSE }
+install.packages("descr", "rtweet", "dplyr", "ggplot2", "tidyverse", "tidytext", "glue", "stringr", "wordcloud", "lubridate")
+```
+
+Now, some basics. 
+It is good practice to call your packages in the beginning of your script by using the library command. You may also want to set your work directory and a few options, such as removing scientific notations.
+
+
+```{r calling packages, message=FALSE}
+# set work directory
+setwd("~/Desktop/SS_Methods_2019/")
+# options
+options(scipen=999, digits = 4)
+
+```
+
+We will learn the commands we need as we progress, but here are some important things to know: 
+
+
+```{r basics, eval=FALSE, message=FALSE, include=TRUE}
+# assign actions to an object
+x <- something
+
+# open csv files
+y <- read.csv("path.csv")
+
+#open RData files
+load("file.RData")
+
+# save as csv file
+write.csv(df, "file.csv", row.names = F)
+
+# save as RData file
+save(df, file = "df.RData")
+```
+
+Note that there is a code for CSV files and another one for RData files. RData files are great to work in R because you can save multiple objects and open them all with just one command instead of loading a CSV per dataframe. 
+
+
+
+## Collecting Twitter Data:
+
+Twitter is among the easiest/most open social media platforms to collect data from. You can get data from Twitter using the API (application programming interface), which require creating a [developers account](http://dev.twitter.com). 
+
+There are several R packages that interact with Twitter's API. We will use rtweet, by [Michael Kearney](https://rtweet.info/articles/intro.html), which can query both the REST and the stream APIs.
+
+Start off by calling packages: rtweet to interact with Twitter and dplyr for some basic data wrangling.
+
+```{call packages, echo=TRUE}
+library(rtweet)
+library(dplyr)
+library(descr)
+```
+
+Now, you need to authenticate with Twitter using the credentials you created for your app
+
+```{r twitter oauth, eval=FALSE, include=TRUE}
+
+## use your credentials here. If you don't have them, load mine. 
+load( "~/Desktop/SS_Methods_2019/twitter_credentials.RData")
+
+
+
+## Create a token
+token <- create_token(
+  app = app_name,
+  consumer_key = consumerKey,
+  consumer_secret = consumerSecret) 
+
+```
+
+There are different types of Twitter data you can collect. 
+For the purposes of this workshop and the hands-on work we do here, we will focus a bit more on the REST API, which collects tweets from a timeline (up to 3200) and from a search (of hashtags, keywords etc), as well as networks of users -- e.g. followers / followed accounts.
+
+
+
+```{r search API, eval=FALSE, include=TRUE}
+
+## getting tweets from one user
+theresamay <- get_timeline("theresa_may", n=3200, retryOnRateLimit=120, resultType = "recent")
+
+
+## getting tweets from several users
+brits <- get_timelines(c("BorisJohnson", "theresa_may", "jeremycorbyn", "Jeremy_Hunt") , n=3200, retryOnRateLimit=120, resultType = "recent")
+
+
+``` 
+
+Now we have a dataframe with 90 variables and several observations. Let's take a look at the column names to understand our variables:
+
+```{checking the df}
+
+colnames(brits)
+#or
+names(brits)
+
+```
+
+
+With this command, we can see the different columns in our dataframe. We have engagement data (e.g. likes, retweets), data about devices, geolocation etc.
+
+We can also view our dataframe in RStudio by clickong on it in the Environment tab, or inspect the first few columns using: 
+
+```{r inspect, echo=TRUE, eval=FALSE}
+
+head(brits)
+
+```
+
+With speficic accounts, we can also pull their list of followers and followed accounts.
+
+```{r twitter networks, eval=FALSE, include=TRUE, inspect=FALSE}
+## how many total follows does the account have?
+me <- lookup_users("patyrossini")
+
+## get them all (this would take a little over 5 days because of rate limits)
+me_flw <- get_followers(
+  "patyrossini", n = me$followers_count, retryonratelimit = TRUE
+)
+
+### for accounts FOLLOWED BY me, the command is:
+
+me_friends <- get_friends("patyrossini")
+
+## note that you only get user ids for the accounts that I follow. To get more information, we need to look them up:
+
+
+me_fds_data <- lookup_users(me_friends$user_id)
+
+
+
+```
+
+# Searching terms
+
+Now, a different type of data we can get is a sample of tweets about a topic or hashtag, using search terms and search operators. Bear in mind this is a sample of tweets (capped at 1% of all tweets at the moment of the query). This means that for very popular topics, you are unlikely to get everything. 
+
+
+```{r search tweets, include=TRUE, eval=FALSE, inspect=FALSE}
+brexit <- search_tweets(
+  "brexit", n = 5000, include_rts = FALSE, retryonratelimit = TRUE)
+
+```
+
+
+For live/ongoing events, we use the streaming API. The streaming API will collect tweets as an event unfolds, and can be used to set up automated collections - for instance, of candidates during an election, or athletes during an event.
+
+One of the main differences between the Streaming and the REST API is that the former will fetch tweets starting from the moment you initiate the query, meaning that your dataset will grow over time, and the later is retroactive -- it only get tweets posted until the moment of the query. 
+
+
+
+
+
+
+

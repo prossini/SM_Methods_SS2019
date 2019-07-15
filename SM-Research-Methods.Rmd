@@ -57,4 +57,4 @@ __Readings__
 
 __Course Materials__
 
-TBA
+- [Day 1: R Basics and Collecting Twitter Data](day1.html)

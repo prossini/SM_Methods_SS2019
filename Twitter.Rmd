@@ -14,6 +14,7 @@ knit: (function(input_file, encoding) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Desktop/SS_Methods_2019/")
 ```
 
 ## Introduction 
@@ -42,7 +43,7 @@ Now, some basics.
 It is good practice to call your packages in the beginning of your script by using the library command. You may also want to set your work directory and a few options, such as removing scientific notations.
 
 
-```{r calling packages, message=FALSE}
+```{r calling packages, eval=FALSE, message=FALSE, include=TRUE, inspect=FALSE}
 # set work directory
 setwd("~/Desktop/SS_Methods_2019/")
 # options

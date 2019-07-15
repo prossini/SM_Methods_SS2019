@@ -423,14 +423,11 @@ save(df, file = &quot;df.RData&quot;)</code></pre>
 <h2>Collecting Twitter Data:</h2>
 <p>Twitter is among the easiest/most open social media platforms to collect data from. You can get data from Twitter using the API (application programming interface), which require creating a <a href="http://dev.twitter.com">developers account</a>.</p>
 <p>There are several R packages that interact with Twitter’s API. We will use rtweet, by <a href="https://rtweet.info/articles/intro.html">Michael Kearney</a>, which can query both the REST and the stream APIs.</p>
-<p>Start off by calling packages: rtweet to interact with Twitter and dplyr for some basic data wrangling.</p>
-<pre class="call"><code>library(rtweet)
-library(dplyr)
-library(descr)</code></pre>
-<p>Now, you need to authenticate with Twitter using the credentials you created for your app</p>
-<pre class="r"><code>## use your credentials here. If you don't have them, load mine. 
-load( &quot;~/Desktop/SS_Methods_2019/twitter_credentials.RData&quot;)
+<p>Now, you need to authenticate with Twitter using the credentials you created for your app:</p>
+<pre class="r"><code>library(rtweet)
 
+## use your credentials here. If you don't have them, load mine. 
+load( &quot;~/Desktop/SS_Methods_2019/twitter_credentials.RData&quot;)
 
 
 ## Create a token
@@ -477,8 +474,25 @@ me_fds_data &lt;- lookup_users(me_friends$user_id)</code></pre>
 <p>Now, a different type of data we can get is a sample of tweets about a topic or hashtag, using search terms and search operators. Bear in mind this is a sample of tweets (capped at 1% of all tweets at the moment of the query). This means that for very popular topics, you are unlikely to get everything.</p>
 <pre class="r"><code>brexit &lt;- search_tweets(
   &quot;brexit&quot;, n = 5000, include_rts = FALSE, retryonratelimit = TRUE)</code></pre>
+<div id="streaming-api" class="section level2">
+<h2>Streaming API</h2>
 <p>For live/ongoing events, we use the streaming API. The streaming API will collect tweets as an event unfolds, and can be used to set up automated collections - for instance, of candidates during an election, or athletes during an event.</p>
 <p>One of the main differences between the Streaming and the REST API is that the former will fetch tweets starting from the moment you initiate the query, meaning that your dataset will grow over time, and the later is retroactive – it only get tweets posted until the moment of the query.</p>
+<pre class="r"><code>library(rtweet)
+
+stream_tweets(
+  &quot;brexit&quot;,
+  timeout = 60 * 60 * 24 * 7,
+  file_name = &quot;brexit.json&quot;,
+  parse = FALSE
+)
+
+
+## read in the data as a tidy tbl data frame
+brexit_stream &lt;- parse_stream(&quot;brexit.json&quot;)</code></pre>
+<p>Finally, to pick up from where we left from tomorrow, let’s save the data (replace the first argument ‘brits’ with your dataframe):</p>
+<pre class="r"><code>save(brits, file = &quot;4britishleaders.RData&quot;)</code></pre>
+</div>
 </div>
 
 

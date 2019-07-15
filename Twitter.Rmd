@@ -11,11 +11,12 @@ knit: (function(input_file, encoding) {
 
 
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "~/Desktop/SS_Methods_2019/")
+require("knitr")
+opts_knit$set(root.dir = "~/SM_Methods_SS2019/")
 ```
+
 
 ## Introduction 
 
@@ -81,21 +82,14 @@ Twitter is among the easiest/most open social media platforms to collect data fr
 
 There are several R packages that interact with Twitter's API. We will use rtweet, by [Michael Kearney](https://rtweet.info/articles/intro.html), which can query both the REST and the stream APIs.
 
-Start off by calling packages: rtweet to interact with Twitter and dplyr for some basic data wrangling.
-
-```{call packages, echo=TRUE}
-library(rtweet)
-library(dplyr)
-library(descr)
-```
-
-Now, you need to authenticate with Twitter using the credentials you created for your app
+Now, you need to authenticate with Twitter using the credentials you created for your app:
 
 ```{r twitter oauth, eval=FALSE, include=TRUE}
 
+library(rtweet)
+
 ## use your credentials here. If you don't have them, load mine. 
 load( "~/Desktop/SS_Methods_2019/twitter_credentials.RData")
-
 
 
 ## Create a token
@@ -144,6 +138,9 @@ head(brits)
 
 ```
 
+
+
+
 With speficic accounts, we can also pull their list of followers and followed accounts.
 
 ```{r twitter networks, eval=FALSE, include=TRUE, inspect=FALSE}
@@ -168,6 +165,7 @@ me_fds_data <- lookup_users(me_friends$user_id)
 
 ```
 
+
 # Searching terms
 
 Now, a different type of data we can get is a sample of tweets about a topic or hashtag, using search terms and search operators. Bear in mind this is a sample of tweets (capped at 1% of all tweets at the moment of the query). This means that for very popular topics, you are unlikely to get everything. 
@@ -180,13 +178,37 @@ brexit <- search_tweets(
 ```
 
 
+## Streaming API
+
 For live/ongoing events, we use the streaming API. The streaming API will collect tweets as an event unfolds, and can be used to set up automated collections - for instance, of candidates during an election, or athletes during an event.
 
 One of the main differences between the Streaming and the REST API is that the former will fetch tweets starting from the moment you initiate the query, meaning that your dataset will grow over time, and the later is retroactive -- it only get tweets posted until the moment of the query. 
 
 
+```{r stream tweets, include=TRUE, eval=FALSE, inspect=FALSE}
+library(rtweet)
+
+stream_tweets(
+  "brexit",
+  timeout = 60 * 60 * 24 * 7,
+  file_name = "brexit.json",
+  parse = FALSE
+)
 
 
+## read in the data as a tidy tbl data frame
+brexit_stream <- parse_stream("brexit.json")
+
+```
+
+
+
+Finally, to pick up from where we left from tomorrow, let's save the data (replace the first argument 'brits' with your dataframe): 
+
+```{r saving twitter data, include=TRUE, eval=FALSE, inspect=FALSE}
+
+save(brits, file = "4britishleaders.RData")
+```
 
 
 

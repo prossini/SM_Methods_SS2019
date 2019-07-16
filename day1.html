@@ -394,7 +394,7 @@ $(document).ready(function () {
 </ul>
 <div id="r-basics" class="section level3">
 <h3>R Basics</h3>
-<p>First things first: open RStudio and install all the packages we will need for this course running the following code (remove the # to run the code):</p>
+<p>First things first: open RStudio and install all the packages we will need for this course running the following code:</p>
 <pre class="r"><code>install.packages(&quot;descr&quot;, &quot;rtweet&quot;, &quot;dplyr&quot;, &quot;ggplot2&quot;, &quot;tidyverse&quot;, &quot;tidytext&quot;, &quot;glue&quot;, &quot;stringr&quot;, &quot;wordcloud&quot;, &quot;lubridate&quot;)</code></pre>
 <p>Now, some basics. It is good practice to call your packages in the beginning of your script by using the library command. You may also want to set your work directory and a few options, such as removing scientific notations.</p>
 <pre class="r"><code># set work directory
@@ -426,15 +426,15 @@ save(df, file = &quot;df.RData&quot;)</code></pre>
 <p>Now, you need to authenticate with Twitter using the credentials you created for your app:</p>
 <pre class="r"><code>library(rtweet)
 
-## use your credentials here. If you don't have them, load mine. 
-load( &quot;~/Desktop/SS_Methods_2019/twitter_credentials.RData&quot;)
+## use your credentials here. If you don't have them, load the ones I shared 
+load( &quot;twitter_credentials.RData&quot;)
 
 
 ## Create a token
 token &lt;- create_token(
-  app = app_name,
-  consumer_key = consumerKey,
-  consumer_secret = consumerSecret) </code></pre>
+  app = app_name, #your app name
+  consumer_key = consumerKey, #consumer key for your app
+  consumer_secret = consumerSecret) #consumer secret for your app</code></pre>
 <p>There are different types of Twitter data you can collect. For the purposes of this workshop and the hands-on work we do here, we will focus a bit more on the REST API, which collects tweets from a timeline (up to 3200) and from a search (of hashtags, keywords etc), as well as networks of users – e.g. followers / followed accounts.</p>
 <pre class="r"><code>## getting tweets from one user
 theresamay &lt;- get_timeline(&quot;theresa_may&quot;, n=3200, retryOnRateLimit=120, resultType = &quot;recent&quot;)
@@ -477,25 +477,6 @@ me_fds_data &lt;- lookup_users(me_friends$user_id)</code></pre>
 <p>Now, a different type of data we can get is a sample of tweets about a topic or hashtag, using search terms and search operators. Bear in mind this is a sample of tweets (capped at 1% of all tweets at the moment of the query). This means that for very popular topics, you are unlikely to get everything.</p>
 <pre class="r"><code>brexit &lt;- search_tweets(
   &quot;brexit&quot;, n = 5000, include_rts = FALSE, retryonratelimit = TRUE)</code></pre>
-<div id="streaming-api" class="section level2">
-<h2>Streaming API</h2>
-<p>For live/ongoing events, we use the streaming API. The streaming API will collect tweets as an event unfolds, and can be used to set up automated collections - for instance, of candidates during an election, or athletes during an event.</p>
-<p>One of the main differences between the Streaming and the REST API is that the former will fetch tweets starting from the moment you initiate the query, meaning that your dataset will grow over time, and the later is retroactive – it only get tweets posted until the moment of the query.</p>
-<pre class="r"><code>library(rtweet)
-
-stream_tweets(
-  &quot;brexit&quot;,
-  timeout = 60 * 60 * 24 * 7,
-  file_name = &quot;brexit.json&quot;,
-  parse = FALSE
-)
-
-
-## read in the data as a tidy tbl data frame
-brexit_stream &lt;- parse_stream(&quot;brexit.json&quot;)</code></pre>
-<p>Finally, to pick up from where we left from tomorrow, let’s save the data (replace the first argument ‘brits’ with your dataframe):</p>
-<pre class="r"><code>save(brits, file = &quot;brits.RData&quot;)</code></pre>
-</div>
 <div id="analysis" class="section level2">
 <h2>Analysis</h2>
 <div id="time-series" class="section level3">
@@ -525,6 +506,187 @@ brits %&gt;%
 <p>You can tweak your plot changing the colors, breaks (hours, days, weeks…), the type of the plot, the theme etc. Check <a href="https://ggplot2.tidyverse.org/reference/">ggplot2</a> reference to learn more about these options.</p>
 </div>
 </div>
+<div id="hands-on-exercise" class="section level2">
+<h2>Hands-on exercise</h2>
+<pre class="r"><code>brit_parties &lt;- get_timelines(c(&quot;brexitparty_uk&quot;, &quot;UKLabour&quot;, &quot;Conservatives&quot;, &quot;LibDems&quot;, &quot;TheGreenParty&quot;) , n=3200, retryOnRateLimit=120, resultType = &quot;recent&quot;) 
+
+
+# let's check the frequency for each twitter handle
+freq(brit_parties$screen_name)
+
+#and inspect the column names (so we know what we have)
+colnames(brit_parties)
+
+#we can filter the results and store them to a new dataframe based on parameters such as the date of the tweeet
+parties &lt;- filter(brit_parties, created_at &gt;= &quot;2019-01-01 00:00:00&quot;) # gets tweets in 2019
+android &lt;- filter(brit_parties, source == &quot;Twitter for Android&quot;) #  gets tweets sent using an android phone
+
+# selecting the variables we are interested in and recording them to a new dataframe (useful for large datasets) - needs dplyr to be loaded:
+
+parties_ff &lt;- select(parties, screen_name, favorite_count, retweet_count, reply_count, is_retweet, hashtags, media_type)
+
+# inspecting the dataset to see the values in the subcategories of interest
+freq(parties_ff$screen_name)
+parties_ff$media_type &lt;- unlist(parties_ff$media_type)
+freq(parties_ff$media_type)
+freq(parties_ff$hashtags)</code></pre>
+<p>Basic linear and logistic models:</p>
+<pre class="r"><code>## creating binaries for each party, media type and hashtag:
+parties_ff$brexitparty &lt;- ifelse(parties_ff$screen_name == &quot;brexitparty_uk&quot;, 1, 0)
+parties_ff$libdems &lt;- ifelse(parties_ff$screen_name == &quot;LibDems&quot;, 1, 0)
+parties_ff$greens &lt;- ifelse(parties_ff$screen_name == &quot;TheGreenParty&quot;, 1, 0)
+parties_ff$labour &lt;- ifelse(parties_ff$screen_name == &quot;UKLabour&quot;, 1, 0)
+parties_ff$photos &lt;- ifelse(is.na(parties_ff$media_type), 0, 1)
+parties_ff$hashtag &lt;- ifelse(is.na(parties_ff$hashtags), 0, 1)</code></pre>
+<p>Linear model basic code: lm(DV ~ IV + IV2, data = dataset), where DV is a numeric variable.</p>
+<pre class="r"><code>load(&quot;~/parties.RData&quot;)
+library(jtools)
+reg1 &lt;- lm(retweet_count ~ photos + hashtag +  labour + greens + libdems + brexitparty, data = parties_ff)
+summary(reg1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = retweet_count ~ photos + hashtag + labour + greens + 
+##     libdems + brexitparty, data = parties_ff)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1178.1  -193.5  -114.2    -1.3 20392.9 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)   210.93      22.62   9.326  &lt; 2e-16 ***
+## photos        -53.84      19.67  -2.737  0.00622 ** 
+## hashtag       -80.49      18.49  -4.354 1.35e-05 ***
+## labour        585.19      32.13  18.215  &lt; 2e-16 ***
+## greens         39.58      25.65   1.543  0.12278    
+## libdems       -14.09      26.61  -0.530  0.59642    
+## brexitparty   974.17      34.38  28.333  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 772.1 on 8288 degrees of freedom
+## Multiple R-squared:  0.1508, Adjusted R-squared:  0.1502 
+## F-statistic: 245.2 on 6 and 8288 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code># an alternative summary with fit statistics from jtools
+summ(reg1)</code></pre>
+<pre><code>## MODEL INFO:
+## Observations: 8295
+## Dependent Variable: retweet_count
+## Type: OLS linear regression 
+## 
+## MODEL FIT:
+## F(6,8288) = 245.24, p = 0.00
+## R² = 0.15
+## Adj. R² = 0.15 
+## 
+## Standard errors: OLS
+## --------------------------------------------------
+##                       Est.    S.E.   t val.      p
+## ----------------- -------- ------- -------- ------
+## (Intercept)         210.93   22.62     9.33   0.00
+## photos              -53.84   19.67    -2.74   0.01
+## hashtag             -80.49   18.49    -4.35   0.00
+## labour              585.19   32.13    18.21   0.00
+## greens               39.58   25.65     1.54   0.12
+## libdems             -14.09   26.61    -0.53   0.60
+## brexitparty         974.17   34.38    28.33   0.00
+## --------------------------------------------------</code></pre>
+<pre class="r"><code># a second model predicting favorites: 
+reg2 &lt;- lm(favorite_count ~ photos + hashtag +  labour + greens + libdems + brexitparty, data = parties_ff)
+summ(reg2)</code></pre>
+<pre><code>## MODEL INFO:
+## Observations: 8295
+## Dependent Variable: favorite_count
+## Type: OLS linear regression 
+## 
+## MODEL FIT:
+## F(6,8288) = 568.68, p = 0.00
+## R² = 0.29
+## Adj. R² = 0.29 
+## 
+## Standard errors: OLS
+## ---------------------------------------------------
+##                        Est.    S.E.   t val.      p
+## ----------------- --------- ------- -------- ------
+## (Intercept)          -59.05   23.16    -2.55   0.01
+## photos               483.95   20.14    24.03   0.00
+## hashtag              -85.67   18.93    -4.53   0.00
+## labour               265.17   32.90     8.06   0.00
+## greens               139.20   26.26     5.30   0.00
+## libdems              141.08   27.25     5.18   0.00
+## brexitparty         1521.94   35.21    43.23   0.00
+## ---------------------------------------------------</code></pre>
+<div id="saving-to-a-word-doc" class="section level3">
+<h3>Saving to a word doc:</h3>
+<p>The package jtools has a function to export the summary of your regression model to word. You can set the names of your coefficients, and even combine two models in the same table. Example:</p>
+<pre class="r"><code># the argument coef_names is only needed if you want R to rename your coefficient names. If not, just remove coef = coef_names in the export_summs function
+ 
+coef_names &lt;- c(&quot;Photos&quot; = &quot;photos&quot;, &quot;Hashtag&quot; = &quot;hashtag&quot;, &quot;Labour Party&quot; = &quot;labour&quot;,
+                &quot;Greens&quot; = &quot;greens&quot;, &quot;LibDems&quot; = &quot;libdems&quot;, &quot;Brexit Party&quot; = &quot;brexitparty&quot;)
+
+# exporting both models together to a word table
+export_summs(reg1, reg2, confint = TRUE, coefs = coef_names,  error_format = '[{conf.low}, {conf.high}]',  ci_level = 0.95,  to.file = &quot;word&quot;, model.names = c(&quot;Retweets&quot;, &quot;Favorites&quot;),  file.name = &quot;Table2.docx&quot;)</code></pre>
+</div>
+</div>
+</div>
+<div id="logistic-regression-other-general-linear-models-e.g.poisson" class="section level1">
+<h1>Logistic Regression (&amp; other general linear models e.g. poisson)</h1>
+<p>For logistic regression models, predicting binary outcomes, we use a different function: glm(). The function requires you to include family in the call (read the docs to check how). The example below is a logistic model, so we use family = “binomial”.</p>
+<p>You can use the jtools function above to export the results to a table.</p>
+<pre class="r"><code>reg3 &lt;- glm(photos ~ greens + brexitparty + libdems + labour, data = parties_ff, family = &quot;binomial&quot;) 
+summary(reg3)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = photos ~ greens + brexitparty + libdems + labour, 
+##     family = &quot;binomial&quot;, data = parties_ff)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -1.1795  -0.8022  -0.5707   1.1826   1.9469  
+## 
+## Coefficients:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -0.35892    0.05416  -6.627 3.43e-11 ***
+## greens      -1.37342    0.07481 -18.360  &lt; 2e-16 ***
+## brexitparty  0.36383    0.08859   4.107 4.01e-05 ***
+## libdems     -0.60978    0.07258  -8.402  &lt; 2e-16 ***
+## labour       0.34672    0.08366   4.145 3.40e-05 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 10168.7  on 8294  degrees of freedom
+## Residual deviance:  9416.5  on 8290  degrees of freedom
+## AIC: 9426.5
+## 
+## Number of Fisher Scoring iterations: 4</code></pre>
+<pre class="r"><code>summ(reg3)</code></pre>
+<pre><code>## MODEL INFO:
+## Observations: 8295
+## Dependent Variable: photos
+## Type: Generalized linear model
+##   Family: binomial 
+##   Link function: logit 
+## 
+## MODEL FIT:
+## χ²(4) = 752.27, p = 0.00
+## Pseudo-R² (Cragg-Uhler) = 0.12
+## Pseudo-R² (McFadden) = 0.07
+## AIC = 9426.47, BIC = 9461.59 
+## 
+## Standard errors: MLE
+## ------------------------------------------------
+##                      Est.   S.E.   z val.      p
+## ----------------- ------- ------ -------- ------
+## (Intercept)         -0.36   0.05    -6.63   0.00
+## greens              -1.37   0.07   -18.36   0.00
+## brexitparty          0.36   0.09     4.11   0.00
+## libdems             -0.61   0.07    -8.40   0.00
+## labour               0.35   0.08     4.14   0.00
+## ------------------------------------------------</code></pre>
+<p>Finally, to save your twitter dataset for future analysis (replace the first argument ‘brits’ with your dataframe):</p>
+<pre class="r"><code>save(parties_ff, brit_parties, file = &quot;brits.RData&quot;)</code></pre>
 </div>
 
 

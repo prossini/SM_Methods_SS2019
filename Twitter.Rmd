@@ -15,6 +15,7 @@ knit: (function(input_file, encoding) {
 knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
 opts_knit$set(root.dir = "~/SM_Methods_SS2019/")
+chooseCRANmirror(graphics=FALSE, ind=1)
 ```
 
 
@@ -34,7 +35,7 @@ First, why use R when there are so many other options out there -- including som
 
 
 ### R Basics
-First things first: open RStudio and install all the packages we will need for this course running the following code (remove the # to run the code):
+First things first: open RStudio and install all the packages we will need for this course running the following code:
 
 ```{r installing packages, message=FALSE, eval=FALSE }
 install.packages("descr", "rtweet", "dplyr", "ggplot2", "tidyverse", "tidytext", "glue", "stringr", "wordcloud", "lubridate")
@@ -44,7 +45,7 @@ Now, some basics.
 It is good practice to call your packages in the beginning of your script by using the library command. You may also want to set your work directory and a few options, such as removing scientific notations.
 
 
-```{r calling packages, eval=FALSE, message=FALSE, include=TRUE, inspect=FALSE}
+```{r calling packages, eval=FALSE, message=FALSE, inspect=FALSE}
 # set work directory
 setwd("~/Desktop/SS_Methods_2019/")
 # options
@@ -88,15 +89,15 @@ Now, you need to authenticate with Twitter using the credentials you created for
 
 library(rtweet)
 
-## use your credentials here. If you don't have them, load mine. 
-load( "~/Desktop/SS_Methods_2019/twitter_credentials.RData")
+## use your credentials here. If you don't have them, load the ones I shared 
+load( "twitter_credentials.RData")
 
 
 ## Create a token
 token <- create_token(
-  app = app_name,
-  consumer_key = consumerKey,
-  consumer_secret = consumerSecret) 
+  app = app_name, #your app name
+  consumer_key = consumerKey, #consumer key for your app
+  consumer_secret = consumerSecret) #consumer secret for your app
 
 ```
 
@@ -177,39 +178,6 @@ brexit <- search_tweets(
 ```
 
 
-## Streaming API
-
-For live/ongoing events, we use the streaming API. The streaming API will collect tweets as an event unfolds, and can be used to set up automated collections - for instance, of candidates during an election, or athletes during an event.
-
-One of the main differences between the Streaming and the REST API is that the former will fetch tweets starting from the moment you initiate the query, meaning that your dataset will grow over time, and the later is retroactive -- it only get tweets posted until the moment of the query. 
-
-
-```{r stream tweets, include=TRUE, eval=FALSE, inspect=FALSE}
-library(rtweet)
-
-stream_tweets(
-  "brexit",
-  timeout = 60 * 60 * 24 * 7,
-  file_name = "brexit.json",
-  parse = FALSE
-)
-
-
-## read in the data as a tidy tbl data frame
-brexit_stream <- parse_stream("brexit.json")
-
-```
-
-
-
-Finally, to pick up from where we left from tomorrow, let's save the data (replace the first argument 'brits' with your dataframe): 
-
-```{r saving twitter data, include=TRUE, eval=FALSE, inspect=FALSE}
-
-save(brits, file = "brits.RData")
-```
-
-
 ## Analysis
 
 ### Time Series
@@ -241,4 +209,104 @@ brits %>%
 
 You can tweak your plot changing the colors, breaks (hours, days, weeks...), the type of the plot, the theme etc. Check [ggplot2](https://ggplot2.tidyverse.org/reference/) reference to learn more about these options. 
 
+
+
+## Hands-on exercise
+
+```{r eval=FALSE, include=TRUE}
+brit_parties <- get_timelines(c("brexitparty_uk", "UKLabour", "Conservatives", "LibDems", "TheGreenParty") , n=3200, retryOnRateLimit=120, resultType = "recent") 
+
+
+# let's check the frequency for each twitter handle
+freq(brit_parties$screen_name)
+
+#and inspect the column names (so we know what we have)
+colnames(brit_parties)
+
+#we can filter the results and store them to a new dataframe based on parameters such as the date of the tweeet
+parties <- filter(brit_parties, created_at >= "2019-01-01 00:00:00") # gets tweets in 2019
+android <- filter(brit_parties, source == "Twitter for Android") #  gets tweets sent using an android phone
+
+# selecting the variables we are interested in and recording them to a new dataframe (useful for large datasets) - needs dplyr to be loaded:
+
+parties_ff <- select(parties, screen_name, favorite_count, retweet_count, reply_count, is_retweet, hashtags, media_type)
+
+# inspecting the dataset to see the values in the subcategories of interest
+freq(parties_ff$screen_name)
+parties_ff$media_type <- unlist(parties_ff$media_type)
+freq(parties_ff$media_type)
+freq(parties_ff$hashtags)
+
+```
+
+Basic linear and logistic models:
+
+```{r eval=FALSE, inspect=FALSE, include=TRUE}
+
+## creating binaries for each party, media type and hashtag:
+parties_ff$brexitparty <- ifelse(parties_ff$screen_name == "brexitparty_uk", 1, 0)
+parties_ff$libdems <- ifelse(parties_ff$screen_name == "LibDems", 1, 0)
+parties_ff$greens <- ifelse(parties_ff$screen_name == "TheGreenParty", 1, 0)
+parties_ff$labour <- ifelse(parties_ff$screen_name == "UKLabour", 1, 0)
+parties_ff$photos <- ifelse(is.na(parties_ff$media_type), 0, 1)
+parties_ff$hashtag <- ifelse(is.na(parties_ff$hashtags), 0, 1)
+
+```
+
+Linear model basic code: 
+lm(DV ~ IV + IV2, data = dataset), where DV is a numeric variable.
+
+```{r lm, echo=TRUE}
+load("~/parties.RData")
+library(jtools)
+reg1 <- lm(retweet_count ~ photos + hashtag +  labour + greens + libdems + brexitparty, data = parties_ff)
+summary(reg1)
+# an alternative summary with fit statistics from jtools
+summ(reg1)
+
+# a second model predicting favorites: 
+reg2 <- lm(favorite_count ~ photos + hashtag +  labour + greens + libdems + brexitparty, data = parties_ff)
+summ(reg2)
+
+```
+
+### Saving to a word doc: 
+
+The package jtools has a function to export the summary of your regression model to word. You can set the names of your coefficients, and even combine two models in the same table. Example:
+
+```{r save to word, eval=FALSE, inspect=FALSE, include=TRUE}
+
+# the argument coef_names is only needed if you want R to rename your coefficient names. If not, just remove coef = coef_names in the export_summs function
+ 
+coef_names <- c("Photos" = "photos", "Hashtag" = "hashtag", "Labour Party" = "labour",
+                "Greens" = "greens", "LibDems" = "libdems", "Brexit Party" = "brexitparty")
+
+# exporting both models together to a word table
+export_summs(reg1, reg2, confint = TRUE, coefs = coef_names,  error_format = '[{conf.low}, {conf.high}]',  ci_level = 0.95,  to.file = "word", model.names = c("Retweets", "Favorites"),  file.name = "Table2.docx")
+
+
+```
+
+
+# Logistic Regression (& other general linear models e.g. poisson)
+
+For logistic regression models, predicting binary outcomes, we use a different function: glm(). The function requires you to include family in the call (read the docs to check how). The example below is a logistic model, so we use family = "binomial".
+
+You can use the jtools function above to export the results to a table.
+
+```{r glm, echo = TRUE}
+
+reg3 <- glm(photos ~ greens + brexitparty + libdems + labour, data = parties_ff, family = "binomial") 
+summary(reg3)
+summ(reg3)
+
+```
+
+
+Finally, to save your twitter dataset for future analysis (replace the first argument 'brits' with your dataframe): 
+
+```{r saving twitter data, include=TRUE, eval=FALSE, inspect=FALSE}
+
+save(parties_ff, brit_parties, file = "brits.RData")
+```
 

@@ -24,7 +24,9 @@ chooseCRANmirror(graphics=FALSE, ind=1)
 Welcome to day 1 of the Digital Society International Summer School 2019
 
 Before we can talk about using R to collect and analyze data, let's start with the basics. 
-First, why use R when there are so many other options out there -- including some that do not require any coding knowledge? A few reasons: 
+First, why use R when there are so many other options out there -- including some that do not require any coding knowledge? 
+
+A few reasons: 
 
 - R is open-source, and it is also widely supported by active data science and statistics communities. That means it is free :) and constantly updated with new packages, functions, and utilities 
 - R is also one of the most used languages in data science, along with Python. 

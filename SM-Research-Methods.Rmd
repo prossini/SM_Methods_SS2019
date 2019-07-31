@@ -57,4 +57,5 @@ __Readings__
 
 __Course Materials__
 
-- [Day 1: R Basics and Collecting Twitter Data](day1.html)
+- [R Basics and Collecting Twitter Data](day1.html)
+- [Slides](SS-Day1.pdf)
